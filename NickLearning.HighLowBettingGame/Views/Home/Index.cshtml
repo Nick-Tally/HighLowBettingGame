@@ -1,0 +1,307 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 text-center">
+            <div class="alert alert-primary" role="alert">
+                <h2>Welcome Message</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <bank-panel id="startingBalance" asp-value="" asp-icon="fas fa-dollar-sign" asp-label="Starting Balance" asp-style="Info"></bank-panel>
+        </div>
+        <div class="col-md-3">
+            <bank-panel id="currentBalance" asp-value="" asp-icon="fas fa-dollar-sign" asp-label="Current Balance" asp-style="Info"></bank-panel>
+        </div>
+
+    </div>
+    <div class="row">
+        @*guessing area*@
+        <div class="col-md-6">
+
+            <div class="mb-3 bet-input-container">
+                <div class="d-flex">
+                    <span class="badge badge-light mr-3 fs-24">
+                        Enter Your Bet:
+                    </span>
+                    <div class="flex-fill">
+                        <div class="input-group">
+                            <input type="tel" maxlength="6" class="form-control bet-input" autofocus/>
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-info reset-button" type="button"><i class="fas fa-redo-alt"></i></button>
+                                <button class="btn btn-success bet-button" type="button"><i class="fas fa-check-circle"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @for (int i = 1; i < 7; i++)
+            {
+                <guess-control asp-counter="@i"></guess-control>
+            }
+            <button class=" btn-lg btn-success play-again-button mt-2 btn-block" type="button" style="display: none"> <i class="fas fa-play-circle mr-2"></i> Play Again</button>
+        </div>
+        @*game updates*@
+        <div class="col-md-6">
+            <div class="accordion" id="gameUpdateAccordion">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script language="javascript" type="text/javascript">
+        // generate random number
+        var randomNum = Math.floor((Math.random() * 100) + 1);
+        console.log(randomNum);
+        var buttonRestart;
+        var gameNum = 1;
+        var startingBalance = 1000;
+        var currentBalance = 1000;
+        var betAmount = 0;
+        var updatesTemplate =
+            '<div class="card"> \
+                            <div id="heading[GAME_NUM]" class="card-header text-white [BACK_COLOR] text-center c-pointer" data-toggle="collapse" data-target="#collapse[GAME_NUM]" aria-expanded="true" aria-controls="collapse[GAME_NUM]"> \
+                                <span class="fs-20"> \
+                                    Game [GAME_NUM] - [WIN_LOSE] $[AMOUNT] \
+                                </span> \
+                            </div> \
+                            <div id="collapse[GAME_NUM]" class="collapse" aria-labelledby="heading[GAME_NUM]" data-parent="#gameUpdateAccordion"> \
+                                <div class="card-body"> \
+                                    This is extra data for game [GAME_NUM] \
+                                </div> \
+                            </div> \
+                        </div>';
+
+        // button press
+        $(document).ready(function () {
+            $(".reset-button").on("click", buttonResetClick);
+            $(".bet-button").on("click", buttonBetClick);
+            buttonRestart = $(".play-again-button");
+            $(".guess-button").on("click", buttonGuessClick);
+            $(".guess-input").on("keyup", inputGuessKeyup);
+            $(".bet-input").on("keyup", inputBetKeyup);
+            $(".play-again-button").on("click", buttonPlayAgainClick);
+
+            setBankPanelValue("startingBalance", startingBalance);
+            setBankPanelValue("currentBalance", currentBalance);
+        });
+
+        function buttonResetClick(event) {
+            event.preventDefault();
+            $(".bet-input").val("").focus();
+        }
+
+        function buttonBetClick(event) {
+            event.preventDefault();
+            betAmount = $(".bet-input").val();
+            $(".bet-input-container").hide();
+            buttonResetClick(event);
+            var guessControl = $(".guess-control[data-counter=1]");
+            guessControl.show();
+            var guessInput = $(".guess-input[data-counter=1]");
+            guessInput.focus();
+        }
+
+        function buttonGuessClick(event) {
+            event.preventDefault();
+            // assign counter to data attribute of button pressed
+            var counter = $(this).data("counter");
+            checkGuess(counter);
+        }
+
+        function inputGuessKeyup(event) {
+            if (event.keyCode == 13) {
+                // assign counter to data attribute of enter key pressed
+                var counter = $(this).data("counter");
+                checkGuess(counter);
+            }
+        }
+
+        function inputBetKeyup(event) {
+            if (event.keyCode == 13) {
+                buttonBetClick(event);
+            }
+        }
+
+        function buttonPlayAgainClick(event) {
+            event.preventDefault();
+            gameRestart();
+        }
+
+        function checkGuess(counter) {
+            // find bet control
+            var bet = $(".guess-input[data-counter=" + counter + "]");
+            // get the bet value
+            var betVal = bet.val();
+
+            // find input control
+            var guess = $(".guess-input[data-counter=" + counter + "]");
+            // get the guess value
+            var val = guess.val();
+
+            // validate empty string
+            if (val.length == 0) {
+                toastr.error("Invalid Input... Your guess should be an integer between 1 and 100");
+                return false;
+            }
+
+            // truncate leading zeros
+            var guessValue = parseInt(val, 10);
+
+            // validate range
+            if (guessValue < 1 || guessValue > 100) {
+                toastr.error("Invalid Input... Your guess should be an integer between 1 and 100");
+                return false;
+            }
+
+            // find guess display control
+            var guessDisplay = $(".guess-display[data-counter=" + counter + "]");
+            // find guess result control
+            var guessResult = $(".guess-result[data-counter=" + counter + "]");
+            // set value of guess display
+            guessDisplay.text(guessValue);
+            // hide input container
+            var inputContainer = $(".guess-input-container[data-counter=" + counter + "]");
+            inputContainer.hide();
+
+            // success variable
+            var success = false;
+
+            if (guessValue < randomNum) {
+                // set value of guess result to "Too Low"
+                guessResult.text(counter == 6 ? "You Lost!" : "Too Low...");
+                guessResult.addClass(counter == 6 ? "badge-danger" : "badge-warning")
+            }
+            else if (guessValue > randomNum) {
+                // set value of guess result to "Too High..."
+                guessResult.text(counter == 6 ? "You Lost!" : "Too High...");
+                guessResult.addClass("badge-danger")
+            }
+            else {
+                // set value of guess result to "Correct!"
+                guessResult.text("You Won!");
+                guessResult.addClass("badge-success")
+                success = true;
+            }
+
+            // show display container
+            var displayContainer = $(".guess-display-container[data-counter=" + counter + "]");
+            displayContainer.show();
+
+            // exit function if counter is 6
+            if (counter == 6) {
+                gameOver(success, counter);
+                return false;
+            }
+            if (!success) {
+                // incriment counter
+                counter++;
+                // show next guess
+                var guessControl = $(".guess-control[data-counter=" + counter + "]");
+                guessControl.show();
+                // focus on next input
+                var newGuess = $(".guess-input[data-counter=" + counter + "]");
+                newGuess.focus();
+            }
+            else {
+                gameOver(success, counter);
+            }
+        }
+
+        function gameRestart() {
+            // incriment gamenum
+            gameNum++;
+
+            // hide restart button
+            buttonRestart.hide();
+
+            // reset all guess inputs
+            var allGuessInputs = $(".guess-input");
+            allGuessInputs.val("");
+
+            //reset all displays
+            var allGuessDisplays = $(".guess-display");
+            allGuessDisplays.text("");
+
+            // reset badge classes
+            var guessResults = $(".guess-result");
+            guessResults.removeClass("badge-success badge-danger badge-warning");
+
+            // hide all guess-controls
+            var guessControlOthers = $(".guess-control");
+            guessControlOthers.hide();
+
+            // hide all guess-display-containers
+            var displayContainer = $(".guess-display-container");
+            displayContainer.hide();
+
+            // show all guess-input-containers
+            var inputContainer = $(".guess-input-container");
+            inputContainer.show();
+
+            //show bet-input-container
+            var betInputContainers = $(".bet-input-container");
+            betInputContainers.show();
+
+            //focus bet input
+            var betInput = $(".bet-input");
+            betInput.focus();
+
+            // reset success variable
+            success = false;
+
+            // generate new random number
+            randomNum = Math.floor((Math.random() * 100) + 1);
+            console.log(randomNum);
+        }
+
+        function updateDisplay(success, counter) {
+            var html = updatesTemplate
+                .replace(/\[GAME_NUM\]/g, gameNum)
+                .replace(/\[WIN_LOSE\]/g, success ? "Won" : "Lost")
+                .replace(/\[AMOUNT\]/g, parseInt(success ? betAmount / counter : betAmount))
+                .replace(/\[BACK_COLOR\]/g, success ? "bg-success" : "bg-danger");
+
+            $("#gameUpdateAccordion").append(html);
+        }
+
+        function gameOver(success, counter) {
+            // show restart button if success == true
+            buttonRestart.show();
+
+            // call updateDisplay
+            updateDisplay(success, counter);
+
+            // update current balance
+            currentBalance += parseInt(success ? betAmount / counter : - betAmount);
+
+            // pass current balance to bank panel
+            setBankPanelValue("currentBalance", currentBalance);
+        }
+
+        function setBankPanelValue(panel, value) {
+            $("#" + panel).find(".bank-panel-value").text("$" + value);
+
+            setBankPanelBackgroung();
+        }
+
+        function setBankPanelBackgroung() {
+            var css = "bg-info";
+
+            if (currentBalance > startingBalance) {
+                css = "bg-success";
+            }
+            else if (currentBalance < startingBalance) {
+                css = "bg-danger";
+            }
+
+            $("#currentBalance").find(".bank-panel-bg").removeClass("bg-danger bg-success bg-info").addClass(css);
+        }
+    </script>
+}
+
+
