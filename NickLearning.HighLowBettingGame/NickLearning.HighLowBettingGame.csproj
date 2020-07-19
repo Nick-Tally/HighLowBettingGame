@@ -13,4 +13,8 @@
     <Folder Include="Helpers\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="wwwroot\vue\gameHistoryApp.js" />
+  </ItemGroup>
+
 </Project>

@@ -23,7 +23,7 @@ namespace NickLearning.HighLowBettingGame.Controllers
             return View();
         }
 
-        public IActionResult Privacy()
+        public IActionResult Vue()
         {
             return View();
         }
